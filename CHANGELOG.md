@@ -12,3 +12,4 @@
 
 - Show Codex and Claude logos beside their quota indicators.
 - Include source and suggested target model data in downgrade findings so the Savings page can render localized recommendations.
+- Update audited dependencies to patched releases.
