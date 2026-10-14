@@ -4,7 +4,7 @@
  * participación por modelo. Lee de la DB ya ingerida.
  */
 import type { DB } from "./db.js";
-import type { Pricing } from "./pricing.js";
+import { getRate, type Pricing, type Rate } from "./pricing.js";
 
 const DEFAULT_WINDOW_DAYS = 28;
 const DAY_MS = 86_400_000;
@@ -26,6 +26,7 @@ export interface ModelShare {
   cacheWrite: number;
   cacheRead: number;
   known: boolean;
+  rate?: Rate | null;
   share: number; // fracción del costo total de la ventana
 }
 
@@ -101,14 +102,18 @@ export function getSummary(
               SUM(cache_write_tokens) AS cacheWrite, SUM(cache_read_tokens) AS cacheRead
        FROM usage_events WHERE day BETWEEN ? AND ? GROUP BY model ORDER BY costUsd DESC`,
     )
-    .all(from, to) as Omit<ModelShare, "known" | "share">[];
+    .all(from, to) as Omit<ModelShare, "known" | "rate" | "share">[];
 
   const totalCostUsd = perModelRows.reduce((n, m) => n + m.costUsd, 0);
-  const perModel: ModelShare[] = perModelRows.map((m) => ({
-    ...m,
-    known: !!pricing.models[m.model],
-    share: totalCostUsd > 0 ? m.costUsd / totalCostUsd : 0,
-  }));
+  const perModel: ModelShare[] = perModelRows.map((m) => {
+    const rate = getRate(pricing, m.model);
+    return {
+      ...m,
+      known: rate !== null,
+      rate,
+      share: totalCostUsd > 0 ? m.costUsd / totalCostUsd : 0,
+    };
+  });
   const unknownModels = perModel.filter((m) => !m.known).map((m) => m.model);
   const totalTokens = perModelRows.reduce(
     (n, m) => n + m.input + m.output + m.cacheWrite + m.cacheRead,
@@ -127,7 +132,7 @@ export function getSummary(
        FROM usage_events u JOIN sessions s ON s.id = u.session_id
        WHERE u.day BETWEEN ? AND ? GROUP BY s.agent, u.model ORDER BY costUsd DESC`,
     )
-    .all(from, to) as (Omit<ModelShare, "known" | "share"> & { agent: string })[];
+    .all(from, to) as (Omit<ModelShare, "known" | "rate" | "share"> & { agent: string })[];
 
   const agentCostTotals = new Map<string, number>();
   for (const r of perAgentModelRows) {
@@ -139,7 +144,7 @@ export function getSummary(
     perAgentModels[agent] ??= [];
     perAgentModels[agent].push({
       ...m,
-      known: !!pricing.models[m.model],
+      known: getRate(pricing, m.model) !== null,
       share: total > 0 ? m.costUsd / total : 0,
     });
   }

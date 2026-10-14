@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks.js";
-import { usd, compact } from "../utils.js";
 import type { ActivityDay, ActivityPage, PromptSearchResult, SessionDetail, SessionTurn } from "../types.js";
 import { Panel } from "../components/Panel.js";
 import { Loading } from "../components/Loading.js";
 import { ErrorMsg } from "../components/ErrorMsg.js";
 import { Empty } from "../components/Empty.js";
+import { useLocale } from "../i18n.js";
 
 // Hora | Prompt | Modelo · esfuerzo | In | Out | Costo. En móvil el prompt ocupa su propia fila.
 const TURN_GRID =
   "grid grid-cols-[3rem_1fr_3.5rem_3.5rem_3.5rem] sm:grid-cols-[3rem_minmax(0,1fr)_9rem_3.5rem_3.5rem_3.5rem] gap-x-2 items-baseline";
 
 function PromptRow({ t }: { t: SessionTurn }) {
+  const { usd, compact, t: tr } = useLocale();
   const [open, setOpen] = useState(false);
   // Tolera respuestas de un servidor anterior sin el desglose (models/in/out ausentes).
   const models = t.models ?? [];
@@ -29,12 +30,12 @@ function PromptRow({ t }: { t: SessionTurn }) {
       <span className={`col-span-5 sm:col-span-1 order-last sm:order-none min-w-0 text-term-muted ${open ? "whitespace-pre-wrap break-words" : "truncate"}`}>
         {t.prompt}
       </span>
-      <span className="min-w-0 truncate" title={[models.join(", "), t.effort && `esfuerzo: ${t.effort}`].filter(Boolean).join(" · ")}>
+      <span className="min-w-0 truncate" title={[models.join(", "), t.effort && tr("activity.effort", { value: t.effort })].filter(Boolean).join(" · ")}>
         {model ?? "—"}
         {rest.length > 0 && <span className="text-term-muted"> +{rest.length}</span>}
         {t.effort && <span className="block text-term-muted">{t.effort}</span>}
       </span>
-      <span className="text-right" title={t.cacheTokens == null ? undefined : `caché ${compact(t.cacheTokens)} de ${compact(input)}`}>
+      <span className="text-right" title={t.cacheTokens == null ? undefined : tr("activity.cache", { cached: compact(t.cacheTokens), input: compact(input) })}>
         {compact(input)}
       </span>
       <span className="text-right">{t.outputTokens == null ? "—" : compact(t.outputTokens)}</span>
@@ -44,9 +45,10 @@ function PromptRow({ t }: { t: SessionTurn }) {
 }
 
 function SessionDrill({ id }: { id: string }) {
+  const { usd, compact, t } = useLocale();
   const { data } = useApi<SessionDetail>(`/api/session/${id}`);
   const { data: turns } = useApi<SessionTurn[]>(`/api/session/${id}/turns`);
-  if (!data) return <div className="text-xs text-term-muted mt-2">cargando…</div>;
+  if (!data) return <div className="text-xs text-term-muted mt-2">{t("loading")}</div>;
   return (
     <div className="mt-2 ml-2 text-xs min-w-0">
       {data.models.map((m) => (
@@ -62,19 +64,19 @@ function SessionDrill({ id }: { id: string }) {
 
       {data.agent === "opencode" && turns && turns.length > 0 && (
         <div className="mt-2 text-term-muted" style={{ fontSize: 10 }}>
-          Costo por turno de OpenCode = reparto parejo del total de la sesión (OpenCode no registra costo por turno).
+          {t("activity.opencodeCostNote")}
         </div>
       )}
 
       {turns && turns.length > 0 && (
         <div className="mt-3 border-t border-term-border/50 pt-2">
           <div className={`${TURN_GRID} text-term-muted uppercase tracking-widest mb-1 px-1 -mx-1`} style={{ fontSize: 10 }}>
-            <span>Hora</span>
-            <span className="hidden sm:block">Prompts ({turns.length})</span>
-            <span>Modelo</span>
-            <span className="text-right">In</span>
-            <span className="text-right">Out</span>
-            <span className="text-right">Costo</span>
+            <span>{t("activity.time")}</span>
+            <span className="hidden sm:block">{t("activity.prompts", { count: turns.length })}</span>
+            <span>{t("activity.model")}</span>
+            <span className="text-right">{t("activity.inputShort")}</span>
+            <span className="text-right">{t("activity.outputShort")}</span>
+            <span className="text-right">{t("activity.cost")}</span>
           </div>
           <div className="grid gap-1 min-w-0">
             {turns.map((t, i) => (
@@ -85,7 +87,7 @@ function SessionDrill({ id }: { id: string }) {
       )}
       {turns && turns.length === 0 && (
         <div className="mt-2 text-term-muted" style={{ fontSize: 10 }}>
-          (sin prompts legibles — si la sesión es muy vieja, corré Rebuild)
+          {t("activity.noReadablePrompts")}
         </div>
       )}
     </div>
@@ -104,6 +106,7 @@ function mergeDays(previous: ActivityDay[], next: ActivityDay[]): ActivityDay[] 
 }
 
 export function Actividad() {
+  const { usd, t, formatDate } = useLocale();
   const [filters, setFilters] = useState({ project: "", agent: "", model: "" });
   const [draft, setDraft] = useState(filters);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -134,7 +137,7 @@ export function Actividad() {
     const response = await fetch(`/api/activity/search?${searchParams}`);
     const result = await response.json();
     if (!response.ok) {
-      setSearchError(result.error ?? "no se pudo buscar");
+      setSearchError(result.error ?? t("activity.noPromptSearch"));
       setMatches([]);
       return;
     }
@@ -144,23 +147,23 @@ export function Actividad() {
   if (!data) return <Loading />;
   return (
     <div className="grid gap-4 min-w-0">
-      <Panel title="Filtros y exportación">
+      <Panel title={t("activity.filters")}>
         <div className="grid gap-2 sm:grid-cols-4">
           {(["project", "agent", "model"] as const).map((field) => (
-            <input key={field} className="in" placeholder={field} value={draft[field]} onChange={(e) => setDraft({ ...draft, [field]: e.target.value })} />
+            <input key={field} className="in" placeholder={t(`activity.${field}`)} value={draft[field]} onChange={(e) => setDraft({ ...draft, [field]: e.target.value })} />
           ))}
-          <button type="button" className="btn w-full sm:w-auto" onClick={applyFilters}>Aplicar filtros</button>
+          <button type="button" className="btn w-full sm:w-auto" onClick={applyFilters}>{t("activity.apply")}</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <a className="btn" href="/api/export?format=csv" download>Descargar CSV</a>
-          <a className="btn" href="/api/export?format=json" download>Descargar JSON</a>
+          <a className="btn" href="/api/export?format=csv" download>{t("activity.downloadCsv")}</a>
+          <a className="btn" href="/api/export?format=json" download>{t("activity.downloadJson")}</a>
         </div>
       </Panel>
 
-      <Panel title="Buscar en prompts">
+      <Panel title={t("activity.searchPrompts")}>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input className="in" value={promptQuery} onChange={(e) => setPromptQuery(e.target.value)} placeholder="Texto del prompt (solo lectura)" />
-          <button type="button" className="btn w-full sm:w-auto" onClick={search}>Buscar</button>
+          <input className="in" value={promptQuery} onChange={(e) => setPromptQuery(e.target.value)} placeholder={t("activity.promptPlaceholder")} />
+          <button type="button" className="btn w-full sm:w-auto" onClick={search}>{t("activity.search")}</button>
         </div>
         {searchError && <div className="mt-2 text-xs text-term-red">{searchError}</div>}
         {matches.length > 0 && <div className="mt-3 grid gap-2 text-xs">{matches.map((match) => (
@@ -174,7 +177,7 @@ export function Actividad() {
 
       {days.length === 0 && <Empty />}
       {days.map((d) => (
-        <Panel key={d.day} title={d.day}>
+        <Panel key={d.day} title={formatDate(d.day, { year: "numeric", month: "short", day: "numeric" })}>
           <div className="grid gap-2">
             {d.sessions.map((s) => (
               <div key={s.id} className="min-w-0 border-b border-term-border/50 pb-2 last:border-0">
@@ -185,8 +188,8 @@ export function Actividad() {
                   </span>
                   <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-term-muted">
                     <span>{s.agent}</span>
-                    <span>{s.turns} turnos</span>
-                    <span>{s.models.length} modelos</span>
+                    <span>{s.turns} {t(s.turns === 1 ? "activity.oneTurn" : "activity.turns")}</span>
+                    <span>{s.models.length} {t(s.models.length === 1 ? "activity.oneModel" : "activity.models")}</span>
                     <span className="text-term-amber">{usd(s.costUsd)}</span>
                   </span>
                 </button>
@@ -196,7 +199,7 @@ export function Actividad() {
           </div>
         </Panel>
       ))}
-      {data.nextCursor && <button type="button" className="btn justify-self-start" onClick={() => setCursor(data.nextCursor)}>Cargar más</button>}
+      {data.nextCursor && <button type="button" className="btn justify-self-start" onClick={() => setCursor(data.nextCursor)}>{t("activity.loadMore")}</button>}
     </div>
   );
 }

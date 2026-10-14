@@ -1,6 +1,7 @@
 // Agentes de código compatibles con la herramienta. Los logos van en gris
 // semitransparente (currentColor); solo OpenCode lleva casco de obra porque su
 // integración aún está en construcción.
+import { useLocale } from "../i18n.js";
 
 type Agent = { id: string; name: string; logo: React.ReactNode; wip?: boolean };
 
@@ -71,6 +72,10 @@ const AGENTS: Agent[] = [
   },
 ];
 
+export function AgentLogo({ id }: { id: string }) {
+  return AGENTS.find((agent) => agent.id === id)?.logo ?? null;
+}
+
 /** Casco de obra: sombrero de constructor que “viste” cada logo. */
 function BuilderHat({ className = "" }: { className?: string }) {
   return (
@@ -83,23 +88,24 @@ function BuilderHat({ className = "" }: { className?: string }) {
 }
 
 export function AgentLogos() {
+  const { t } = useLocale();
   return (
     <section aria-labelledby="agent-logos-title">
       <div id="agent-logos-title" className="text-[11px] font-medium text-term-muted mb-2.5 px-0.5">
-        Compatible con
+        {t("shell.compatible")}
       </div>
       <ul className="flex items-end justify-between pt-2 text-term-text/35">
         {AGENTS.map(({ id, name, logo, wip }) => (
           <li
             key={id}
-            title={wip ? `${name} — integración en construcción` : name}
+            title={wip ? `${name} — ${t("shell.integrationBuilding")}` : name}
             className="relative w-8 h-8 flex items-center justify-center"
           >
             {logo}
             {wip && (
               <BuilderHat className="absolute -top-[9px] left-1/2 -translate-x-1/2 -rotate-[8deg] w-[15px] h-[15px]" />
             )}
-            <span className="sr-only">{wip ? `${name}, en construcción` : name}</span>
+            <span className="sr-only">{wip ? `${name}, ${t("shell.integrationBuilding")}` : name}</span>
           </li>
         ))}
       </ul>

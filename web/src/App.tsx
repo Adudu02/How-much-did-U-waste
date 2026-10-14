@@ -5,34 +5,32 @@ import { AgentLogos } from "./components/AgentLogos.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Loading } from "./components/Loading.js";
 import { Icon, type IconName } from "./components/Icon.js";
+import { useLocale, type MessageKey } from "./i18n.js";
 
 // Lazy por página: Vite parte el bundle en chunks (Recharts solo viaja a las
 // páginas con gráficos). Las páginas usan named exports → se adaptan a default.
-const PAGES: { path: string; label: string; icon: IconName; Component: React.LazyExoticComponent<() => React.JSX.Element> }[] = [
-  { path: "/", label: "Inicio", icon: "home", Component: lazy(() => import("./pages/Inicio.js").then((m) => ({ default: m.Inicio }))) },
-  { path: "/actividad", label: "Actividad", icon: "activity", Component: lazy(() => import("./pages/Actividad.js").then((m) => ({ default: m.Actividad }))) },
-  { path: "/ahorro", label: "Ahorro", icon: "savings", Component: lazy(() => import("./pages/Ahorro.js").then((m) => ({ default: m.Ahorro }))) },
-  { path: "/skills", label: "Skills", icon: "skills", Component: lazy(() => import("./pages/Skills.js").then((m) => ({ default: m.Skills }))) },
-  { path: "/memoria", label: "Memoria", icon: "memory", Component: lazy(() => import("./pages/Memoria.js").then((m) => ({ default: m.Memoria }))) },
-  { path: "/configuracion", label: "Configuración", icon: "settings", Component: lazy(() => import("./pages/Configuracion.js").then((m) => ({ default: m.Configuracion }))) },
-  { path: "/ayuda", label: "Ayuda", icon: "help", Component: lazy(() => import("./pages/Ayuda.js").then((m) => ({ default: m.Ayuda }))) },
+const PAGES: { path: string; label: MessageKey; icon: IconName; Component: React.LazyExoticComponent<() => React.JSX.Element> }[] = [
+  { path: "/", label: "nav.home", icon: "home", Component: lazy(() => import("./pages/Inicio.js").then((m) => ({ default: m.Inicio }))) },
+  { path: "/actividad", label: "nav.activity", icon: "activity", Component: lazy(() => import("./pages/Actividad.js").then((m) => ({ default: m.Actividad }))) },
+  { path: "/ahorro", label: "nav.savings", icon: "savings", Component: lazy(() => import("./pages/Ahorro.js").then((m) => ({ default: m.Ahorro }))) },
+  { path: "/skills", label: "nav.skills", icon: "skills", Component: lazy(() => import("./pages/Skills.js").then((m) => ({ default: m.Skills }))) },
+  { path: "/memoria", label: "nav.memory", icon: "memory", Component: lazy(() => import("./pages/Memoria.js").then((m) => ({ default: m.Memoria }))) },
+  { path: "/configuracion", label: "nav.settings", icon: "settings", Component: lazy(() => import("./pages/Configuracion.js").then((m) => ({ default: m.Configuracion }))) },
+  { path: "/ayuda", label: "nav.help", icon: "help", Component: lazy(() => import("./pages/Ayuda.js").then((m) => ({ default: m.Ayuda }))) },
 ];
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2.5 px-1">
-      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-term-amber to-[#3b5bdb] flex items-center justify-center flex-none shadow-sm">
-        <span className="brand text-white text-sm">$</span>
-      </div>
-      <div className="min-w-0 leading-tight">
-        <div className="brand text-[15px] text-term-text truncate">How much did u waste?</div>
-        <div className="text-[11px] text-term-muted truncate">Costos &amp; actividad</div>
+    <div className="min-w-0 px-1">
+      <div className="brand text-[15px] text-term-text truncate">
+        How much did u <span className="text-term-amber">waste?</span>
       </div>
     </div>
   );
 }
 
 function NavItems({ onNavigate, className = "" }: { onNavigate?: () => void; className?: string }) {
+  const { t } = useLocale();
   return (
     <nav className={className}>
       {PAGES.map(({ path, label, icon }) => (
@@ -48,7 +46,7 @@ function NavItems({ onNavigate, className = "" }: { onNavigate?: () => void; cla
           }
         >
           <Icon name={icon} className="w-[18px] h-[18px] flex-none" />
-          {label}
+          {t(label)}
         </NavLink>
       ))}
     </nav>
@@ -56,6 +54,7 @@ function NavItems({ onNavigate, className = "" }: { onNavigate?: () => void; cla
 }
 
 export default function App() {
+  const { t } = useLocale();
   const location = useLocation();
   const current = PAGES.find((p) => (p.path === "/" ? location.pathname === "/" : location.pathname.startsWith(p.path))) ?? PAGES[0];
 
@@ -82,8 +81,8 @@ export default function App() {
 
       <div className="flex-1 min-w-0">
         <main className="p-4 sm:p-8 max-w-[1360px] mx-auto overflow-x-hidden">
-          <h1 className="text-2xl font-bold text-term-text mb-5">{current.label}</h1>
-          <ErrorBoundary key={location.pathname}>
+          <h1 className="text-2xl font-bold text-term-text mb-5">{t(current.label)}</h1>
+          <ErrorBoundary key={location.pathname} t={t}>
             <Suspense fallback={<Loading />}>
               <Routes>
                 {PAGES.map(({ path, Component }) => (

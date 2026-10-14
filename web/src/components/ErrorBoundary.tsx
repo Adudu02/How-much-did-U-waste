@@ -1,4 +1,5 @@
 import { Component, Fragment, type ErrorInfo, type ReactNode } from "react";
+import type { MessageKey } from "../i18n.js";
 
 interface State {
   error: Error | null;
@@ -10,7 +11,7 @@ interface State {
  * mensaje y «Reintentar», que remonta los hijos (attempt como key) para
  * re-ejecutar sus cargas de datos.
  */
-export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
+export class ErrorBoundary extends Component<{ children: ReactNode; t: (key: MessageKey) => string }, State> {
   state: State = { error: null, attempt: 0 };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
@@ -27,10 +28,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     if (this.state.error) {
       return (
         <div role="alert" className="bg-term-panel border border-term-border rounded-xl p-6 max-w-xl mx-auto mt-8 shadow-card">
-          <div className="text-term-red text-sm font-bold uppercase tracking-widest">La página falló</div>
+          <div className="text-term-red text-sm font-bold uppercase tracking-widest">{this.props.t("error.pageFailed")}</div>
           <p className="text-term-text text-sm mt-2 break-words">{this.state.error.message}</p>
           <button type="button" onClick={this.retry} className="btn mt-4">
-            Reintentar
+            {this.props.t("error.retry")}
           </button>
         </div>
       );

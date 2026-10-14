@@ -1,72 +1,55 @@
 import { Panel } from "../components/Panel.js";
+import { useLocale } from "../i18n.js";
 
 export function Ayuda() {
+  const { t } = useLocale();
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Panel title="Conectar tus agentes (local)">
+      <Panel title={t("help.connectAgents")}>
         <p className="text-sm text-term-muted mb-3">
-          El dashboard <span className="text-term-green">lee tus transcripts locales en solo lectura</span>.
-          No hay que iniciar sesión ni pegar ninguna clave: los costos se calculan
-          desde los tokens que ya viven en tu disco.
+          {t("help.intro")}
         </p>
         <ol className="text-sm space-y-2 list-decimal ml-4">
           <li>
-            <span className="text-term-amber">Detección automática.</span> Al iniciar el dashboard se ingieren solas:
+            <span className="text-term-amber">{t("help.autoTitle")}</span> {t("help.autoText")}
             <ul className="ml-4 mt-1 text-term-muted list-disc">
               <li>Claude Code → <code>~/.claude/projects{/**/}*.jsonl</code></li>
-              <li>Codex → <code>~/.codex/sessions/**</code> y <code>archived_sessions/</code></li>
+              <li>Codex → <code>~/.codex/sessions/**</code> {t("help.and")} <code>archived_sessions/</code></li>
               <li>Qwen → <code>~/.qwen/usage/token-usage-*.jsonl</code></li>
             </ul>
           </li>
           <li>
-            <span className="text-term-amber">Ruta distinta.</span> Si tus transcripts
-            están en otro lado, ponelo en <span className="text-term-amber">Configuración → Rutas de agentes</span>{" "}
-            (acepta <code>~/</code>) y corré <span className="text-term-amber">Rebuild</span>.
+            <span className="text-term-amber">{t("help.otherPathTitle")}</span> {t("help.otherPathText")}
           </li>
           <li>
-            <span className="text-term-amber">Modelo sin tarifa.</span> Un modelo nuevo
-            aparece con costo 0 + aviso hasta que agregás su precio en{" "}
-            <span className="text-term-amber">Configuración → pricing.json</span>. Nunca se estima en silencio.
+            <span className="text-term-amber">{t("help.noPriceTitle")}</span> {t("help.noPriceText")}
           </li>
         </ol>
       </Panel>
 
-      <Panel title="Seguridad y claves API">
+      <Panel title={t("help.security")}>
         <p className="text-sm text-term-muted mb-3">
-          Programa <span className="text-term-green">local y de solo lectura</span>. Aun así,
-          estas son las garantías concretas:
+          {t("help.securityIntro")}
         </p>
         <ul className="text-sm space-y-2">
           <li>
-            <span className="text-term-green">✓ Nunca pide ni almacena claves.</span> No necesita
-            API keys: calcula el costo <em>equivalente API</em> desde conteos de tokens locales.
-            Si algo te pide una clave, no es este programa.
+            {t("help.noKeys")}
           </li>
           <li>
-            <span className="text-term-green">✓ Fuentes intactas.</span> Todo se abre con flag{" "}
-            <code>'r'</code> (<code>fs-readonly.ts</code>): jamás crea, escribe ni trunca. Un test de
-            integridad hashea el árbol de fuentes antes/después de ingerir y exige que no cambie.
+            {t("help.sourcesIntact")}
           </li>
           <li>
-            <span className="text-term-green">✓ Solo lee transcripts.</span> La búsqueda es una
-            lista blanca (<code>rollout-*.jsonl</code>, <code>token-usage-*.jsonl</code>, <code>*.jsonl</code>, memoria <code>*.md</code>).
-            Nunca abre <code>~/.codex/auth.json</code>, <code>~/.qwen/settings.json</code>, <code>.env</code> ni archivos de credenciales.
+            {t("help.readOnlySources")}
           </li>
           <li>
-            <span className="text-term-green">✓ Guarda solo métricas.</span> En <code>./data/motor.db</code>
-            van conteos de tokens, modelo y nombres de skills — <b>nunca</b> el texto de tus
-            prompts. El drill-down de Actividad sí los muestra: los lee del transcript original
-            (solo lectura) al consultar y no los persiste.
+            {t("help.metricsOnly")}
           </li>
           <li>
-            <span className="text-term-green">✓ Sin exposición de red.</span> El servidor bindea solo a{" "}
-            <code>127.0.0.1:8081</code>. No lo pongas detrás de un proxy público ni lo expongas a la LAN;
-            no tiene auth porque no está pensado para eso.
+            {t("help.loopbackOnly")}
           </li>
         </ul>
         <p className="text-xs text-term-muted mt-3">
-          Precios en <code>pricing.json</code> son list-price de terceros (ago-2026); reverificá contra
-          las páginas oficiales cuando importe para dinero real.
+          {t("help.pricingNote")}
         </p>
       </Panel>
     </div>

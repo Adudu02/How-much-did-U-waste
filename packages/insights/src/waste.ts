@@ -71,6 +71,8 @@ export interface WasteFinding {
   sessionId: string;
   project: string;
   day: string; // día de la sesión (último día con actividad) — para la tendencia
+  model?: string;
+  targetModel?: string;
   title: string; // recomendación en una línea
   detail: string; // los números que la sustentan
   estUsd?: number; // ahorro estimado; ausente = informativo
@@ -265,6 +267,8 @@ export function getWaste(
       sessionId: r.sessionId,
       project: r.project,
       day: r.day,
+      model: r.model,
+      targetModel,
       title: `${r.turns} turnos triviales en ${r.model}`,
       detail: `Salida ≤ ${fmtTokens(thresholds.trivialOutputTokens)} tok/turno: ${targetModel} habría bastado. Cambiá de modelo para trabajo liviano.`,
       estUsd,

@@ -9,12 +9,19 @@ import { readFileRO } from "how-much-did-u-waste-core";
 import { dataDir } from "how-much-did-u-waste-core";
 import { DEFAULT_WASTE, type WasteThresholds } from "./waste.js";
 
+export interface SkillMeta {
+  tag?: string; // propósito manual: code, productivity, investigation…
+  hidden?: boolean;
+  pinned?: boolean;
+}
+
 export interface Config {
   hourlyRate: number;
   staleDays: number;
   minutesPerUseDefault: number;
   minutesPerUse: Record<string, number>;
   agentPaths: Record<string, string>;
+  skillMeta: Record<string, SkillMeta>; // por nombre de skill
   timeZone: string; // IANA, ej. "America/Merida". Vacío = zona del sistema.
   waste: WasteThresholds;
   pricing: { maxAgeDays: number; autoUpdate: boolean; source: "litellm" | "modelsdev" };
@@ -33,6 +40,7 @@ export const DEFAULT_CONFIG: Config = {
   minutesPerUseDefault: 0,
   minutesPerUse: {},
   agentPaths: {},
+  skillMeta: {},
   timeZone: "",
   waste: { ...DEFAULT_WASTE },
   pricing: { maxAgeDays: 7, autoUpdate: true, source: "litellm" },
@@ -56,7 +64,7 @@ function nonNegative(value: unknown, field: string, integer = false): void {
 /** Valida únicamente las claves recibidas, para preservar PUTs parciales. */
 export function validateConfig(value: unknown): Partial<Config> {
   if (!isRecord(value)) throw new Error("config inválida: se esperaba un objeto");
-  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "timeZone", "waste", "pricing", "quota"]);
+  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "skillMeta", "timeZone", "waste", "pricing", "quota"]);
   for (const key of Object.keys(value)) if (!allowed.has(key)) throw new Error(`config inválida: clave desconocida '${key}'`);
   if (value.hourlyRate !== undefined) nonNegative(value.hourlyRate, "hourlyRate");
   if (value.staleDays !== undefined) nonNegative(value.staleDays, "staleDays", true);
@@ -69,6 +77,19 @@ export function validateConfig(value: unknown): Partial<Config> {
       if (!key.trim()) throw new Error(`config inválida: ${field} contiene una clave vacía`);
       if (field === "minutesPerUse") nonNegative(item, `${field}.${key}`);
       else if (typeof item !== "string") throw new Error(`config inválida: ${field}.${key}`);
+    }
+  }
+  if (value.skillMeta !== undefined) {
+    if (!isRecord(value.skillMeta)) throw new Error("config inválida: skillMeta");
+    for (const [skill, meta] of Object.entries(value.skillMeta)) {
+      if (!skill.trim()) throw new Error("config inválida: skillMeta contiene una clave vacía");
+      if (!isRecord(meta)) throw new Error(`config inválida: skillMeta.${skill}`);
+      for (const key of Object.keys(meta)) {
+        if (key !== "tag" && key !== "hidden" && key !== "pinned") throw new Error(`config inválida: skillMeta.${skill}.${key}`);
+      }
+      if (meta.tag !== undefined && (typeof meta.tag !== "string" || !meta.tag.trim())) throw new Error(`config inválida: skillMeta.${skill}.tag`);
+      if (meta.hidden !== undefined && typeof meta.hidden !== "boolean") throw new Error(`config inválida: skillMeta.${skill}.hidden`);
+      if (meta.pinned !== undefined && typeof meta.pinned !== "boolean") throw new Error(`config inválida: skillMeta.${skill}.pinned`);
     }
   }
   if (value.waste !== undefined) {
@@ -131,6 +152,9 @@ function merge(partial: Partial<Config>): Config {
     ...partial,
     minutesPerUse: { ...DEFAULT_CONFIG.minutesPerUse, ...(partial.minutesPerUse ?? {}) },
     agentPaths: { ...DEFAULT_CONFIG.agentPaths, ...(partial.agentPaths ?? {}) },
+    skillMeta: Object.fromEntries(
+      Object.entries({ ...DEFAULT_CONFIG.skillMeta, ...(partial.skillMeta ?? {}) }).filter(([, v]) => Object.keys(v).length > 0),
+    ),
     waste: { ...DEFAULT_WASTE, ...(partial.waste ?? {}) },
     pricing: { ...DEFAULT_CONFIG.pricing, ...(partial.pricing ?? {}) },
     quota: {
@@ -158,6 +182,7 @@ export async function saveConfig(partial: Partial<Config>, path = defaultConfigP
     ...valid,
     minutesPerUse: { ...current.minutesPerUse, ...(valid.minutesPerUse ?? {}) },
     agentPaths: { ...current.agentPaths, ...(valid.agentPaths ?? {}) },
+    skillMeta: { ...current.skillMeta, ...(valid.skillMeta ?? {}) },
   });
   await writeFile(path, `${JSON.stringify(next, null, 2)}\n`, "utf8");
   return next;

@@ -8,6 +8,7 @@ export interface ModelShare {
   cacheWrite: number;
   cacheRead: number;
   known: boolean;
+  rate?: { input: number; output: number } | null;
   share: number;
 }
 
@@ -33,6 +34,12 @@ export interface Summary {
   unknownModels: string[];
 }
 
+export interface InstallLocation {
+  agent: string;
+  path: string;
+  target: string;
+}
+
 export interface SkillRow {
   name: string;
   uses: number;
@@ -42,6 +49,12 @@ export interface SkillRow {
   minutesPerUse: number;
   inCatalog: boolean;
   availableTo: string[];
+  description: string;
+  purpose: string;
+  purposeSource: "manual" | "frontmatter" | "heuristic" | "none";
+  installedAt: InstallLocation[];
+  hidden: boolean;
+  pinned: boolean;
   agents: { agent: string; uses: number; savedUsd: number }[];
 }
 
@@ -98,6 +111,7 @@ export interface PromptSearchResult {
 export interface SessionDetail {
   id: string;
   project: string;
+  agent: string;
   turns: number;
   totalCostUsd: number;
   models: { model: string; input: number; output: number; cacheWrite: number; cacheRead: number; costUsd: number }[];
@@ -144,6 +158,8 @@ export interface WasteFinding {
   project: string;
   title: string;
   detail: string;
+  model?: string;
+  targetModel?: string;
   estUsd?: number;
   estTokens?: number;
   metrics: { input: number; output: number; cacheWrite: number; cacheRead: number; turns: number; cacheHitRatio: number };

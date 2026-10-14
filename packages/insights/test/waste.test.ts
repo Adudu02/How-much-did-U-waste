@@ -72,6 +72,8 @@ describe("getWaste — model-mismatch (UC2)", () => {
     const { findings } = getWaste(db, pricing, DEFAULT_WASTE);
     const mm = findings.find((f) => f.kind === "model-mismatch" && f.sessionId === "mm");
     expect(mm).toBeDefined();
+    expect(mm?.model).toBe("claude-opus-4-8");
+    expect(mm?.targetModel).toBe("claude-sonnet-5");
     expect(mm?.metrics.turns).toBe(3);
     // opus 3×(1000*5+500*25)/1e6 = 0.0525 ; sonnet-5 3×(1000*2+500*10)/1e6 = 0.021
     expect(mm?.estUsd).toBeCloseTo(0.0315, 6);

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { refreshAll } from "../hooks.js";
 import { REFRESH_MS } from "../constants.js";
+import { useLocale } from "../i18n.js";
 
 export function RefreshControl() {
+  const { t } = useLocale();
   const [auto, setAuto] = useState(true);
   const [busy, setBusy] = useState(false);
   const run = useCallback(async () => {
@@ -19,13 +21,13 @@ export function RefreshControl() {
 
   return (
     <div className="flex items-center gap-2 text-xs whitespace-nowrap md:flex-col md:items-stretch md:gap-2">
-      {busy && <span className="text-term-muted md:text-[11px]">actualizando…</span>}
+      {busy && <span className="text-term-muted md:text-[11px]">{t("refresh.busy")}</span>}
       <div className="flex items-center gap-2">
         <button type="button"
           onClick={run}
-          aria-label="Refrescar datos"
+          aria-label={t("refresh.aria")}
           disabled={busy}
-          title="Reingerir transcripts y refrescar"
+          title={t("refresh.title")}
           className="w-7 h-7 flex items-center justify-center rounded-full border border-term-border text-term-amber hover:bg-term-amber/10 disabled:opacity-50"
         >
           ↻
@@ -33,7 +35,7 @@ export function RefreshControl() {
         <button type="button"
           onClick={() => setAuto((a) => !a)}
           aria-pressed={auto}
-          title={`Auto-refresco cada ${REFRESH_MS / 1000}s`}
+          title={t("refresh.auto", { seconds: REFRESH_MS / 1000 })}
           className={`px-2.5 py-1 rounded-full border font-semibold ${
             auto ? "bg-term-green text-white border-term-green" : "border-term-border text-term-muted"
           }`}

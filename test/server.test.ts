@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, copyFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, copyFileSync, existsSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,7 +41,7 @@ describe("HTTP contracts", () => {
       dbPath: join(tmp, "motor.db"),
       configPath: join(tmp, "config.json"),
       pricingPath: join(tmp, "pricing.json"),
-      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex") },
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
     });
     server.db.prepare("INSERT INTO sessions (id, agent, project, started_at, ended_at, turns) VALUES (?, ?, ?, ?, ?, ?)").run("s1", "codex", "demo", "2026-01-01T00:00:00Z", "2026-01-01T01:00:00Z", 1);
     server.db.prepare("INSERT INTO usage_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("e1", "s1", "2026-01-01T01:00:00Z", "2026-01-01", "test", 3, 4, 0, 0, 0.1);
@@ -147,6 +147,61 @@ describe("HTTP contracts", () => {
     expect(skills.json()).toEqual({ skills: [], categories: {} });
   });
 
+  it("meta de skill: PUT persiste tag/pinned y se refleja en /api/skills", async () => {
+    server.db.prepare("INSERT INTO skills_usage (skill, session_id, ts, kind) VALUES (?, ?, ?, ?)").run("caveman", "s1", "2026-01-01T00:00:00Z", "command");
+    const put = await server.app.inject({ method: "PUT", url: "/api/skills/caveman/meta", payload: { tag: "docs", pinned: true } });
+    expect(put.statusCode).toBe(200);
+    expect(put.json().meta).toEqual({ tag: "docs", pinned: true });
+    const skills = await server.app.inject({ method: "GET", url: "/api/skills" });
+    const row = skills.json().skills.find((s: { name: string }) => s.name === "caveman");
+    expect(row.purpose).toBe("docs");
+    expect(row.purposeSource).toBe("manual");
+    expect(row.pinned).toBe(true);
+    // tag inválido => 400; null limpia el campo.
+    expect(await server.app.inject({ method: "PUT", url: "/api/skills/caveman/meta", payload: { tag: 5 } })).toMatchObject({ statusCode: 400 });
+    const cleared = await server.app.inject({ method: "PUT", url: "/api/skills/caveman/meta", payload: { tag: null, pinned: null } });
+    expect(cleared.json().meta).toEqual({});
+    const after = await server.app.inject({ method: "GET", url: "/api/skills" });
+    const afterRow = after.json().skills.find((s: { name: string }) => s.name === "caveman");
+    expect(afterRow.purposeSource).toBe("none"); // sin catálogo ni tag
+    expect(afterRow.pinned).toBe(false);
+  });
+
+  it("DELETE desinstala: symlink fuera, dir real a la papelera; 404 desconocido", async () => {
+    mkdirSync(join(tmp, "agents", "skills", "demo"), { recursive: true });
+    writeFileSync(join(tmp, "agents", "skills", "demo", "SKILL.md"), "---\nname: demo\ndescription: deploy docker\n---\n");
+    mkdirSync(join(tmp, "claude", "skills"), { recursive: true });
+    symlinkSync("../../agents/skills/demo", join(tmp, "claude", "skills", "demo"));
+    const skServer = await buildServer({
+      dbPath: join(tmp, "sk.db"),
+      configPath: join(tmp, "config.json"),
+      pricingPath: join(tmp, "pricing.json"),
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
+      trashRoot: join(tmp, "trash"),
+    });
+    try {
+      const row = (await skServer.app.inject({ method: "GET", url: "/api/skills" })).json().skills.find((s: { name: string }) => s.name === "demo");
+      expect(row.installedAt).toHaveLength(2);
+      expect(row.purpose).toBe("devops"); // heurística sobre "deploy docker"
+
+      const del = await skServer.app.inject({ method: "DELETE", url: "/api/skills/demo" });
+      expect(del.statusCode).toBe(200);
+      const report = del.json().report;
+      expect(report.removed).toEqual([join(tmp, "claude", "skills", "demo")]);
+      expect(report.trashed).toHaveLength(1);
+      expect(existsSync(join(tmp, "claude", "skills", "demo"))).toBe(false);
+      expect(existsSync(join(tmp, "agents", "skills", "demo"))).toBe(false);
+
+      const after = await skServer.app.inject({ method: "GET", url: "/api/skills" });
+      expect(after.json().skills.some((s: { name: string }) => s.name === "demo")).toBe(false);
+
+      const missing = await skServer.app.inject({ method: "DELETE", url: "/api/skills/no-existe" });
+      expect(missing.statusCode).toBe(404);
+    } finally {
+      await skServer.app.close();
+    }
+  });
+
   it("pricing-status expone frestura local sin red", async () => {
     // El pricing de test no tiene verified_at => unknown.
     const st = await server.app.inject({ method: "GET", url: "/api/pricing-status" });
@@ -175,7 +230,7 @@ describe("HTTP contracts", () => {
     }));
     const refreshServer = await buildServer({
       dbPath: join(tmp, "refresh.db"), configPath, pricingPath,
-      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex") },
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
       pricingUpdate: pricingUpdate as never,
     });
     try {
@@ -199,7 +254,7 @@ describe("HTTP contracts", () => {
       dbPath: join(tmp, "refresh-error.db"),
       configPath: join(tmp, "config.json"),
       pricingPath: join(tmp, "pricing.json"),
-      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex") },
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
       pricingUpdate: (async () => ({ updated: [], added: [], unchanged: [], missingRate: [], error: "offline" })) as never,
     });
     try {
@@ -226,6 +281,7 @@ describe("HTTP contracts", () => {
       dbPath: join(tmp, "q.db"),
       configPath: join(tmp, "config.json"),
       pricingPath: join(tmp, "pricing.json"),
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
       quotaCachePath: cachePath,
       quotaFetch: (async () => ({ ok: true, json: async () => ({ five_hour: { utilization: 42, resets_at: "2026-09-13T15:00:00Z" } }) })) as unknown as typeof fetch,
       quotaClaudeCredentialsPath: join(tmp, "claude-creds.json"),
@@ -273,6 +329,7 @@ describe("HTTP contracts", () => {
       dbPath: join(tmp, "q-false.db"),
       configPath,
       pricingPath: join(tmp, "pricing.json"),
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
       quotaCachePath: cachePath,
       quotaFetch: (async () => {
         fetchCalls++;
@@ -310,6 +367,7 @@ describe("HTTP contracts", () => {
       dbPath: join(tmp, "q-true.db"),
       configPath,
       pricingPath: join(tmp, "pricing.json"),
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
       quotaCachePath: cachePath,
       quotaFetch: (async () => {
         fetchCalls++;
@@ -354,6 +412,7 @@ describe("SPA fallback", () => {
       dbPath: join(tmp, "motor.db"),
       configPath: join(tmp, "config.json"),
       pricingPath: join(tmp, "pricing.json"),
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex"), qwenRoot: join(tmp, "qwen"), agentsRoot: join(tmp, "agents") },
       distRoot: join(tmp, "dist"),
     });
   });

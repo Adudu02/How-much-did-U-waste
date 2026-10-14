@@ -14,8 +14,8 @@ import { defaultProjectsRoot, ingestAll } from "how-much-did-u-waste-core";
 import { rootsFromConfig } from "how-much-did-u-waste-core";
 import { loadPricing, pricingAgeStatus, savePricing, type Pricing } from "how-much-did-u-waste-core";
 import { getSummary } from "how-much-did-u-waste-core";
-import { loadConfig, saveConfig, type Config } from "how-much-did-u-waste-insights";
-import { discoverCatalog, getSkills } from "how-much-did-u-waste-insights";
+import { loadConfig, saveConfig, type Config, type SkillMeta } from "how-much-did-u-waste-insights";
+import { discoverCatalog, getSkills, uninstallSkill } from "how-much-did-u-waste-insights";
 import { scanMemory, syncMemoryNodes } from "how-much-did-u-waste-insights";
 import { autoPricingCheck } from "how-much-did-u-waste-insights";
 import { cacheFreshness, readQuotaCache, refreshQuota, defaultQuotaCachePath } from "how-much-did-u-waste-core";
@@ -31,11 +31,13 @@ export interface ServerOptions {
   dbPath?: string;
   configPath?: string;
   pricingPath?: string;
-  catalogRoots?: { claudeRoot?: string; codexRoot?: string };
+  catalogRoots?: { claudeRoot?: string; codexRoot?: string; qwenRoot?: string; agentsRoot?: string };
   /** Raíz del build del frontend; inyectable para tests herméticos del fallback SPA. */
   distRoot?: string;
   /** Caché de quota inyectable (tests). Default: <cwd>/data/quota-cache.json. */
   quotaCachePath?: string;
+  /** Papelera de uninstall inyectable (tests). Default: <cwd>/data/trash/skills. */
+  trashRoot?: string;
   /** fetch inyectable para los probers de quota (tests sin red). */
   quotaFetch?: typeof fetch;
   /** Credenciales de Claude inyectables (tests sin credenciales reales). */
@@ -53,7 +55,12 @@ export async function buildServer(options: ServerOptions = {}) {
   const catalogRoots = () => {
     if (options.catalogRoots) return options.catalogRoots;
     const roots = rootsFromConfig(config.agentPaths);
-    return { claudeRoot: roots.projectsRoot ? dirname(roots.projectsRoot) : undefined, codexRoot: roots.codexRoot };
+    // agentsRoot sin override => default de discoverCatalog (~/.agents).
+    return {
+      claudeRoot: roots.projectsRoot ? dirname(roots.projectsRoot) : undefined,
+      codexRoot: roots.codexRoot,
+      qwenRoot: roots.qwenRoot,
+    };
   };
   let catalog = await discoverCatalog(catalogRoots());
 
@@ -68,6 +75,56 @@ export async function buildServer(options: ServerOptions = {}) {
   });
 
   app.get("/api/skills", async () => getSkills(db, config, catalog));
+
+  // Meta de un skill (tag de propósito, ocultar, fijar). Se persiste en
+  // ./data/config.json — las fuentes siguen intactas. null/"" limpia el campo.
+  app.put("/api/skills/:name/meta", async (req, reply) => {
+    const { name } = req.params as { name: string };
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const current: SkillMeta = config.skillMeta[name] ?? {};
+    const next: SkillMeta = { ...current };
+    try {
+      if ("tag" in body) {
+        if (body.tag !== null && typeof body.tag !== "string") throw new Error("tag debe ser texto o null");
+        const tag = typeof body.tag === "string" ? body.tag.trim() : "";
+        if (tag) next.tag = tag;
+        else delete next.tag;
+      }
+      for (const flag of ["hidden", "pinned"] as const) {
+        if (flag in body) {
+          if (body[flag] !== null && typeof body[flag] !== "boolean") throw new Error(`${flag} debe ser booleano o null`);
+          if (body[flag] === true) next[flag] = true;
+          else delete next[flag];
+        }
+      }
+    } catch (err) {
+      reply.code(400);
+      return { ok: false, error: (err as Error).message };
+    }
+    const clean = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined));
+    // Siempre escribe la entrada (vacía = limpiar); merge() poda las vacías.
+    const skillMeta = { ...config.skillMeta, [name]: clean };
+    config = await saveConfig({ skillMeta }, options.configPath);
+    return { ok: true, meta: config.skillMeta[name] ?? {} };
+  });
+
+  // Desinstala el skill de TODAS sus rutas: symlinks desenlazados, dirs reales
+  // a la papelera (./data/trash/skills). Guard de raíces dentro de uninstallSkill.
+  app.delete("/api/skills/:name", async (req, reply) => {
+    const { name } = req.params as { name: string };
+    const entry = catalog.get(name);
+    if (!entry) {
+      reply.code(404);
+      return { ok: false, error: "skill no encontrado en el catálogo" };
+    }
+    if (!entry.installedAt?.length) {
+      reply.code(400);
+      return { ok: false, error: "el skill no tiene rutas de instalación" };
+    }
+    const report = await uninstallSkill(name, entry.installedAt, catalogRoots(), options.trashRoot);
+    catalog = await discoverCatalog(catalogRoots());
+    return { ok: true, report };
+  });
 
   app.get("/api/memory", async () => scanMemory(undefined, { staleDays: config.staleDays }));
 

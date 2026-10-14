@@ -5,8 +5,10 @@ import { Loading } from "../components/Loading.js";
 import { ErrorMsg } from "../components/ErrorMsg.js";
 import { Empty } from "../components/Empty.js";
 import { Legend } from "../components/Legend.js";
+import { useLocale } from "../i18n.js";
 
 export function Memoria() {
+  const { t, formatNumber } = useLocale();
   const { data, error } = useApi<MemoryGraph>("/api/memory");
   if (error) return <ErrorMsg msg={error} />;
   if (!data) return <Loading />;
@@ -43,18 +45,18 @@ export function Memoria() {
     <div className="grid gap-4">
       <Panel>
         <div className="text-lg">
-          <span className="text-term-amber font-bold">{data.counts.memories}</span> memorias ·{" "}
-          <span className="text-term-red font-bold">{data.counts.stale}</span> obsoletas
+          <span className="text-term-amber font-bold">{formatNumber(data.counts.memories)}</span> {t(data.counts.memories === 1 ? "memory.one" : "memory.count")} ·{" "}
+          <span className="text-term-red font-bold">{formatNumber(data.counts.stale)}</span> {t(data.counts.stale === 1 ? "memory.staleOne" : "memory.stale")}
         </div>
       </Panel>
       <Panel>
         {data.nodes.length === 0 ? (
-          <Empty msg="sin archivos de memoria en ~/.claude/projects/*/memory" />
+          <Empty msg={t("memory.empty")} />
         ) : (
           <div className="overflow-x-auto">
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 480 }} role="img" aria-label="Grafo de memoria del proyecto">
-              <title>Grafo de memoria del proyecto</title>
-              <desc>Nodos de archivos de memoria enlazados a su sesión de origen; los obsoletos se destacan.</desc>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 480 }} role="img" aria-label={t("memory.graphLabel")}>
+              <title>{t("memory.graphLabel")}</title>
+              <desc>{t("memory.graphDescription")}</desc>
               {data.links.map((l, i) => {
                 const a = pos.get(l.source);
                 const b = pos.get(l.target);
@@ -78,11 +80,11 @@ export function Memoria() {
         )}
         <Legend
           items={[
-            ["#4c6ef5", "memoria"],
-            ["#16a34a", "índice"],
-            ["#06b6d4", "sesión"],
-            ["#8b5cf6", "proyecto"],
-            ["#f59e0b", "obsoleta"],
+            ["#4c6ef5", t("memory.legendMemory")],
+            ["#16a34a", t("memory.legendIndex")],
+            ["#06b6d4", t("memory.legendSession")],
+            ["#8b5cf6", t("memory.legendProject")],
+            ["#f59e0b", t("memory.legendStale")],
           ]}
         />
       </Panel>

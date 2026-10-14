@@ -69,4 +69,29 @@ describe("getSummary — perAgent", () => {
     expect(codex.length).toBeGreaterThan(0);
     expect(codex.every((m) => m.costUsd === 0)).toBe(true);
   });
+
+  it("uses the pricing resolver for provider prefixes and dated model IDs", () => {
+    db.prepare("UPDATE usage_events SET model = ? WHERE model = ?").run("openai/claude-opus-4-8", "claude-opus-4-8");
+    db.prepare("UPDATE usage_events SET model = ? WHERE model = ?").run("claude-haiku-4-5-20251001", "claude-haiku-4-5");
+    const s = getSummary(db, CLAUDE_ONLY, { windowDays: 60 });
+
+    expect(s.perModel.find((m) => m.model === "openai/claude-opus-4-8")).toMatchObject({
+      known: true,
+      rate: { input: 5, output: 25 },
+    });
+    expect(s.perModel.find((m) => m.model === "claude-haiku-4-5-20251001")).toMatchObject({
+      known: true,
+      rate: { input: 1, output: 5 },
+    });
+    expect(s.perModel.find((m) => m.model === "claude-ghost-9")).toMatchObject({ known: false, rate: null });
+  });
+
+  it("returns configured input and output prices for active models", () => {
+    const s = getSummary(db, CLAUDE_ONLY, { windowDays: 60 });
+    expect(s.perModel.find((m) => m.model === "claude-opus-4-8")).toMatchObject({
+      known: true,
+      rate: { input: 5, output: 25 },
+    });
+    expect(s.perModel.find((m) => m.model === "claude-ghost-9")).toMatchObject({ known: false, rate: null });
+  });
 });
