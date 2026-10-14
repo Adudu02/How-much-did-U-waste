@@ -1,5 +1,5 @@
 /* Fuente Nocturne→Arcade. En local con internet carga; offline cae a system-ui. */
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap");
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
@@ -27,6 +27,15 @@ body {
   font-family: "Bricolage Grotesque", system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+.logo-word {
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-weight: 800;
+  font-stretch: 75%;
+  font-variation-settings: "wdth" 75, "opsz" 96;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.88;
 }
 .num {
   font-family: "Bricolage Grotesque", system-ui, sans-serif;

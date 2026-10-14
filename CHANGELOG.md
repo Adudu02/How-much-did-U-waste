@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.6-beta — 2026-10-14
+
+### Improved
+
+- Replace the generic app icon with a receipt-and-dollar logo and matching responsive wordmark.
+- Rewrite the README to describe current features, supported sources, package architecture, API, and local-first data behavior.
+
 ## v0.0.5-beta — 2026-10-14
 
 ### Added

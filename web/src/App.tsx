@@ -4,6 +4,7 @@ import { RefreshControl } from "./components/RefreshControl.js";
 import { AgentLogos } from "./components/AgentLogos.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Loading } from "./components/Loading.js";
+import { Logo } from "./components/Logo.js";
 import { Icon, type IconName } from "./components/Icon.js";
 import { useLocale, type MessageKey } from "./i18n.js";
 
@@ -18,16 +19,6 @@ const PAGES: { path: string; label: MessageKey; icon: IconName; Component: React
   { path: "/configuracion", label: "nav.settings", icon: "settings", Component: lazy(() => import("./pages/Configuracion.js").then((m) => ({ default: m.Configuracion }))) },
   { path: "/ayuda", label: "nav.help", icon: "help", Component: lazy(() => import("./pages/Ayuda.js").then((m) => ({ default: m.Ayuda }))) },
 ];
-
-function Brand() {
-  return (
-    <div className="min-w-0 px-1">
-      <div className="brand text-[15px] text-term-text truncate">
-        How much did u <span className="text-term-amber">waste?</span>
-      </div>
-    </div>
-  );
-}
 
 function NavItems({ onNavigate, className = "" }: { onNavigate?: () => void; className?: string }) {
   const { t } = useLocale();
@@ -62,7 +53,7 @@ export default function App() {
     <div className="min-h-screen md:flex">
       {/* Sidebar (desktop) */}
       <aside className="hidden md:flex md:w-[232px] md:flex-none md:flex-col md:gap-6 md:border-r md:border-term-border md:bg-term-panel md:px-4 md:py-5 md:sticky md:top-0 md:h-screen">
-        <Brand />
+        <Logo />
         <NavItems className="flex flex-col gap-1" />
         <div className="mt-auto flex flex-col gap-4 border-t border-term-border pt-4">
           <AgentLogos />
@@ -73,7 +64,7 @@ export default function App() {
       {/* Top bar (mobile) */}
       <header className="md:hidden sticky top-0 z-10 bg-term-panel/95 backdrop-blur border-b border-term-border px-4 py-3 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <Brand />
+          <Logo compact />
           <RefreshControl />
         </div>
         <NavItems className="flex gap-1 overflow-x-auto -mx-1 px-1" />
