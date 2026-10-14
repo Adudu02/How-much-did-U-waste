@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.7-beta — 2026-10-14
+
+### Improved
+
+- Refresh the README dashboard screenshots to show the current logo and model prices using synthetic sample data.
+
 ## v0.0.6-beta — 2026-10-14
 
 ### Improved

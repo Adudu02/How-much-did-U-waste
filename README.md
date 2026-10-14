@@ -1,4 +1,4 @@
-# How much did u waste? · v0.0.6-beta
+# How much did u waste? · v0.0.7-beta
 
 [![CI](https://github.com/Adudu02/How-much-did-U-waste/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/How-much-did-U-waste/actions/workflows/ci.yml)
 
@@ -8,11 +8,13 @@ API-equivalent spend, and helps identify token waste. The dashboard includes
 per-model prices, quota indicators, skill usage, memory, and Spanish and English
 (US) interface languages.
 
-![Dashboard — remaining quota, equiv-API spend and model share](docs/img/dashboard-home.png)
+![Inicio — quota, API-equivalent spend, model prices and the updated logo (synthetic sample data)](docs/img/dashboard-home.png)
 
-![Ahorro — ranked leaks with estimated savings (identifiers anonymized)](docs/img/dashboard-savings.png)
+![Ahorro — ranked findings with estimated savings (synthetic sample data)](docs/img/dashboard-savings.png)
 
-![Actividad — filterable timeline with per-session drill-down (identifiers anonymized)](docs/img/dashboard-activity.png)
+![Actividad — filterable timeline with per-session drill-down (synthetic sample data)](docs/img/dashboard-activity.png)
+
+Screenshots use synthetic sample data and contain no local activity records.
 
 ## Data and privacy
 
@@ -67,7 +69,7 @@ workspace packages.
 The package is not yet published to npm. Install from a GitHub release:
 
 ```bash
-npx https://github.com/Adudu02/How-much-did-U-waste/releases/download/v0.0.6-beta/how-much-did-u-waste-0.0.6-beta.tgz
+npx https://github.com/Adudu02/How-much-did-U-waste/releases/download/v0.0.7-beta/how-much-did-u-waste-0.0.7-beta.tgz
 ```
 
 It serves the dashboard at `http://127.0.0.1:8081`. It reads detected local
