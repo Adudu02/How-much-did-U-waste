@@ -4,11 +4,14 @@ DFT's measurement engine (`packages/core`) is ~90% generic (ingest pipeline, met
 
 ## What Changes
 
+> **Alcance reducido por decisión del usuario**: la rama `feat/extract-core` NO se
+> fusiona con main — es una línea de feature independiente. DFT queda intacto
+> (packages/core, insights, root y pipelines idénticos a main) y la rama aporta
+> SOLO la extracción como paquetes aditivos.
+
 - **New package `packages/engine`** (npm `agent-usage-engine`): the generic measurement engine. Contains the normalized event model, `IngestAdapter`/`SyncAdapter` interfaces, the incremental ingest pipeline, metrics DB (schema + migrations), pricing engine + updaters, cost math, aggregate/summary/activity/export/report views, quota framework (types, cache, refresh runner — no probers), read-only IO + SQLite snapshot helpers, and `setDataDir` injection. `ingestAll` accepts adapter lists as parameters — **the engine knows zero agents**.
-- **New package `packages/adapters`** (npm `agent-usage-adapters`): the coding-agent adapter pack. The 10 existing adapters (Claude Code, Codex, Qwen, ZCode, Gemini, OpenCode, Grok, Goose, Amp, Crush), the 6 quota probers, `getIngestAdapters`/`getSyncAdapters`/`rootsFromConfig` with their default roots and test-isolation rules.
-- **`packages/core` becomes a facade** re-exporting engine + adapters and wrapping `ingestAll` with the pack's registry, so the public API of `how-much-did-u-waste-core` is unchanged (insights, reporter, root app and published-npm consumers keep working without edits).
-- **Generic config-store pattern extracted to engine**: schema-driven load/validate/atomic-save with allowlist keys and partial updates (the machinery currently inside `packages/insights/src/config.ts`); insights keeps its DFT schema but uses the generic store.
-- Build/lint/test/release wiring for the two new packages; adapter tests move to the adapters pack.
+- **New package `packages/adapters`** (npm `agent-usage-adapters`): the coding-agent adapter pack. The 10 existing adapters (Claude Code, Codex, Qwen, ZCode, Gemini, OpenCode, Grok, Goose, Amp, Crush), the 6 quota probers + `ALL_PROBERS`, `getIngestAdapters`/`getSyncAdapters`/`rootsFromConfig` with their default roots and test-isolation rules, y `refreshQuota` con defaults del pack.
+- **DFT NO cambia**: `packages/core` conserva su implementación actual (la extracción es aditiva: los archivos viven en ambos lados hasta que la rama tenga su propio ciclo de vida). Sin facade, sin wiring de build/release en main, sin cambios en insights.
 
 ## Capabilities
 
@@ -19,12 +22,11 @@ DFT's measurement engine (`packages/core`) is ~90% generic (ingest pipeline, met
 
 ### Modified Capabilities
 
-- `agent-usage-ingestion`: `ingestAll` SHALL accept injected adapter lists (pluggable registry) instead of building them internally; the built-in registry requirements (default roots, test isolation, `rootsFromConfig` coverage) relocate to `agent-adapters-pack` and are re-stated there. Ingest behavior (dedup, offsets, transactions, cost materialization) is unchanged.
+(none — DFT behavior is untouched; `agent-usage-ingestion` on main stays as-is)
 
 ## Impact
 
-- **New code**: `packages/engine/src/**` (moved from `packages/core/src` minus adapters/probers), `packages/adapters/src/**` (moved adapters + probers + registry).
-- **Modified**: `packages/core/src/index.ts` (facade barrel), `packages/core/package.json` (depends on both new packages), root `package.json` scripts (`build:engine`, `build:adapters`, test chain), `biome.json` lint paths, `.github/workflows/release.yml` and `scripts/pack-release.mjs` if publishing the new packages.
-- **Moved tests**: adapter-specific tests (`agent-coverage`, `codex`, `gemini`, `zcode`, `sqlite-adapters`, `registry`) → `packages/adapters/test/`; engine tests stay in `packages/engine/test/`.
-- **Unchanged behavior**: ingest semantics, DB schema/versioning, pricing precedence/units, quota probing, all API routes, dashboard. `how-much-did-u-waste-core` public API stays source-compatible.
-- **Invariants preserved**: sources read-only, prompts never persisted, state under `data/`, WAL snapshot helper, 127.0.0.1 binding.
+- **New code (additive only)**: `packages/engine/src/**` + `packages/engine/test/**` + `packages/engine/data/*`, `packages/adapters/src/**` + `packages/adapters/test/**`; lockfile entries for the two workspace packages.
+- **Unchanged**: `packages/core`, `packages/insights`, `packages/reporter`, `src/`, `web/`, `bin/`, `scripts/`, `.github/`, `tsconfig.json`, `vitest.config.ts`, root `package.json` — byte-identical to `main` (`git diff main -- <those paths>` is empty).
+- **Duplication is deliberate**: until the branch becomes its own repo/product, the extracted files also remain in `packages/core`; DFT's release pipeline is untouched.
+- **Invariants preserved in the extracted packages**: sources read-only, prompts never persisted, state under `data/`, WAL snapshot helper.

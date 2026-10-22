@@ -7,9 +7,7 @@ import { buildServer } from "../src/server.js";
 import { DEFAULT_CONFIG } from "how-much-did-u-waste-insights";
 
 const here = dirname(fileURLToPath(import.meta.url));
-// Fixtures de agentes: viven con el pack de adapters (los parsers se movieron
-// de core a agent-usage-adapters).
-const fx = (name: string) => join(here, "..", "packages", "adapters", "test", "fixtures", name);
+const fx = (name: string) => join(here, "..", "packages", "core", "test", "fixtures", name);
 
 describe("HTTP contracts", () => {
   let tmp: string;

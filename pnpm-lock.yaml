@@ -107,12 +107,9 @@ importers:
 
   packages/core:
     dependencies:
-      agent-usage-adapters:
-        specifier: workspace:*
-        version: link:../adapters
-      agent-usage-engine:
-        specifier: workspace:*
-        version: link:../engine
+      better-sqlite3:
+        specifier: ^13.0.3
+        version: 13.0.3
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^9.6.0

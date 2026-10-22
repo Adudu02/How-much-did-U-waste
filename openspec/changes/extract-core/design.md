@@ -25,25 +25,25 @@ El repo ya tuvo una extracción previa (era "Motor Agéntico", se re-marcó a `h
 `packages/engine/src` recibe `ingest.ts`, `lib/*`, `adapters/types.ts`, `adapters/registry.ts` (solo interfaces `IngestAdapter`/`SyncAdapter` + tipos), y `quota/{types,cache,refresh}.ts` + contrato `QuotaProber` (sin `probers/*`). `packages/adapters/src` recibe los 10 adapters, `quota/probers/*` + `ALL_PROBERS`, `getIngestAdapters`/`getSyncAdapters`/`rootsFromConfig` con las raíces por defecto y la regla de aislamiento.
 *Alternativa descartada*: reescribir el pipeline con un sistema de plugins formal (register/extend) — sobre-ingeniería: el patrón probers (lista pasada como parámetro) ya es el estilo del repo y cubre el caso "cualquier proyecto inyecta sus adapters".
 
-### D2: `ingestAll` del motor recibe adapters; el facade de core los inyecta
+### D2: `ingestAll` del motor recibe adapters; la composición vive en el consumidor
 
-Motor: `ingestAll(db, { adapters: IngestAdapter[], syncAdapters: SyncAdapter[], pricing?, staleDays?, timeZone?, reparseSkills? })` — listas vacías por defecto (no-op). Core facade exporta un `ingestAll` con la firma actual (`projectsRoot`, `codexRoot`, …) que compone `rootsFromConfig`-style roots → `getIngestAdapters`/`getSyncAdapters` del pack → motor. Así la firma pública de core no cambia y el motor queda puro.
+Motor: `ingestAll(db, { adapters: IngestAdapter[], syncAdapters: SyncAdapter[], pricing?, staleDays?, timeZone?, reparseSkills? })` — listas vacías por defecto (no-op). Sin facade: cada consumidor compone raíces → registry del pack → motor (el pack lo documenta y su test helper `test/helpers.ts` es la referencia de esa composición).
 *Alternativa descartada*: que el motor conserve defaults de raíces — reintroduciría conocimiento de agentes en el motor.
 
-### D3: `packages/core` queda como facade delgado, no se elimina
+### D3: DFT queda intacto — extracción aditiva, sin facade
 
-`how-much-did-u-waste-core` pasa a depender de `agent-usage-engine` + `agent-usage-adapters` y su `src/index.ts` re-exporta ambos más el `ingestAll` wrapper. Sus tests de integración (los que hoy ejercitan adapters end-to-end) se mueven al pack; los de motor se mueven a engine. Publicar 4 paquetes como hoy (el facade no agrega código, solo estabilidad de API).
-*Alternativa descartada*: actualizar insights/reporter/root para importar de engine+adapters directamente — rompe consumidores npm existentes de `how-much-did-u-waste-core` y multiplica el churn sin beneficio.
+**Decisión de usuario**: la rama no se fusiona con main, es una línea de feature independiente. Por eso NO se toca `packages/core` (sin facade), `packages/insights` (sin reescribir config) ni el wiring de build/release del root: `git diff main -- packages/core packages/insights src web scripts .github tsconfig.json vitest.config.ts package.json` es vacío. Los archivos extraídos permanecen duplicados en core hasta que la rama tenga su propio ciclo de vida (repo propio o publicación).
+*Alternativa descartada (implementada primero y revertida)*: core como facade re-exportando engine+adapters con wrappers de `ingestAll`/`refreshQuota` — API pública estable pero acopla el ciclo de vida de DFT al de la extracción, y la rama habría llevado cambios de DFT que nunca se fusionarían.
 
-### D4: config store genérico en engine, schema DFT en insights
+### D4: config store genérico en engine
 
-Engine expone `createConfigStore({ path, schema, defaults })` con la maquinaria actual de `insights/src/config.ts`: load con defaults, allowlist de claves (reject unknown), merge parcial, save atómico (tmp+rename). `insights/src/config.ts` se reescribe como schema DFT + delegate en el store genérico; `validateConfig` mantiene su firma y errores (tests de config pasan sin cambio).
+Engine expone `createConfigStore` con la maquinaria de config de insights: load con defaults, allowlist de claves (reject unknown), merge parcial dirigido por schema del consumidor, save atómico (tmp+rename). El schema DFT NO migra (insights queda intacto); el store queda disponible para cualquier proyecto sobre el engine.
 *Alternativa descartada*: mover config completo a engine con el schema DFT — contaminaría el motor con opiniones del producto.
 
-### D5: nombres npm neutros y wiring de build/release
+### D5: nombres npm neutros, wiring mínimo
 
-`agent-usage-engine` y `agent-usage-adapters` (carpetas `packages/engine`, `packages/adapters`). `pnpm-workspace.yaml` ya cubre `packages/*`. Root `package.json` agrega `build:engine`/`build:adapters` antes de `build:core`; `lint` agrega las rutas nuevas; `release.yml` publica los dos paquetes nuevos; `pack-release.mjs` los agrega como bundledDependencies del tarball. Los tests se reparten: engine (unit de pricing/db/ingest con adapters fake), adapters (los tests de agentes actuales), core (smoke del facade: barrel + wrapper).
-*Alternativa descartada*: mantener todo en un solo paquete con subpath exports (`@engine/adapters`) — el pack de adapters debe ser excluíble para que cualquier proyecto use el motor a secas.
+`agent-usage-engine` y `agent-usage-adapters` (carpetas `packages/engine`, `packages/adapters`). `pnpm-workspace.yaml` ya cubre `packages/*` — única concesión del root. Cada paquete se construye/prueba con `pnpm --filter <pkg> build|test`; los scripts del root NO cambian. Publicar a npm / tarballs queda fuera de alcance (decisión posterior).
+*Alternativa descartada*: un solo paquete con subpath exports (`@engine/adapters`) — el pack de adapters debe ser excluíble para que cualquier proyecto use el motor a secas.
 
 ### D6: cero migración de datos
 
@@ -51,16 +51,14 @@ El schema de DB, `data/motor.db`, `data/pricing.json`, offsets y reports no camb
 
 ## Risks / Trade-offs
 
-- [Duplicación momentánea de tests al mover] → mover, no copiar: cada test se elimina de su ubicación original en el mismo commit; el gate completo (`pnpm lint && pnpm typecheck && pnpm test && pnpm run build`) valida la cadena.
+- [Duplicación deliberada con `packages/core`] → mientras la rama viva sin fusionarse, los archivos extraídos existen en ambos lados y pueden divergir; mitigación: la rama puede absorber main (`git merge main`) sin conflicto de dirección, y el paso final (repo propio o publicación) elimina la copia de DFT.
 - [`better-sqlite3` en engine duplica builds nativos] → ya está allowlistado en `pnpm-workspace.yaml`; engine es su único runtime dep, igual que core hoy.
-- [Facade con re-exports puede perder tipos en `strict`] → `export type *` explícito en el barrel del facade + `pnpm typecheck` gate.
-- [Riesgo de leakage: engine importando accidentalmente del pack] → regla de dependencia unidireccional validada por test de integridad (grep de imports en engine) y por el propio layout (engine no declara la dep en package.json).
-- [Publicación npm de nombres nuevos puede colisionar] → verificar disponibilidad antes del release; los nombres son internal-first (workspace), publicar es opt-in.
+- [Riesgo de leakage: engine importando accidentalmente del pack] → regla de dependencia unidireccional validada por el propio layout (engine no declara la dep en package.json) y por sus tests standalone.
+- [Publicación npm de nombres nuevos puede colisionar] → verificar disponibilidad cuando se decida publicar; por ahora son paquetes internal-first del workspace.
 
 ## Migration Plan
 
-1. Crear `packages/engine` y `packages/adapters` moviendo código (git mv) — core compila contra ellos.
-2. Core → facade; insights/reporter/root sin cambios de import.
-3. Mover tests; agregar test de no-op y test de adapter fake en engine; smoke de facade en core.
-4. Wiring build/lint/release; gate completo + `./start.sh --update` para validar runtime.
-5. Rollback: revert del merge — ningún dato migra, `data/` es intacto; el branch `feat/extract-core` aísla el cambio.
+1. Crear `packages/engine` y `packages/adapters` con el código extraído (copias de core, no movimientos) + sus tests/configs propios.
+2. Verificar `git diff main` = solo paquetes nuevos + lockfile + artifacts de openspec.
+3. Gate por lado: engine/adapters con `pnpm --filter`; DFT con sus scripts de main (typecheck/test/build) intactos.
+4. Rollback: eliminar la rama — main jamás fue tocado; ningún dato migra.

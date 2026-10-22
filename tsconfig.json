@@ -22,12 +22,6 @@
       ],
       "how-much-did-u-waste-insights": [
         "./packages/insights/src/index.ts"
-      ],
-      "agent-usage-engine": [
-        "./packages/engine/src/index.ts"
-      ],
-      "agent-usage-adapters": [
-        "./packages/adapters/src/index.ts"
       ]
     }
   },

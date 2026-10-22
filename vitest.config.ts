@@ -28,12 +28,6 @@ export default defineConfig({
       "how-much-did-u-waste-insights": fileURLToPath(
         new URL("./packages/insights/src/index.ts", import.meta.url),
       ),
-      "agent-usage-engine": fileURLToPath(
-        new URL("./packages/engine/src/index.ts", import.meta.url),
-      ),
-      "agent-usage-adapters": fileURLToPath(
-        new URL("./packages/adapters/src/index.ts", import.meta.url),
-      ),
     },
   },
 });
