@@ -2,7 +2,7 @@
   "name": "how-much-did-u-waste-core",
   "version": "0.0.7-beta",
   "type": "module",
-  "description": "Cost/activity/token-leak engine for AI coding agents (Claude Code, Codex, Qwen). Read-only over the sources; library without server or UI.",
+  "description": "Cost/activity/token-leak engine facade for AI coding agents: re-exports agent-usage-engine (generic measurement) + agent-usage-adapters (Claude Code, Codex, Qwen and friends) with the historical API. Read-only over the sources; library without server or UI.",
   "license": "MIT",
   "author": "Adudu02",
   "repository": {
@@ -34,9 +34,7 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist",
-    "data/pricing.json",
-    "data/pricing-overrides.json.example"
+    "dist"
   ],
   "engines": {
     "node": ">=20"
@@ -48,7 +46,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3"
+    "agent-usage-adapters": "workspace:*",
+    "agent-usage-engine": "workspace:*"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

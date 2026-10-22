@@ -1,8 +1,18 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Cobertura del motor (⑯): provider v8, tabla en terminal + HTML en coverage/.
-// Umbrales = baseline medido menos margen (ver design del change coverage-ci-lint).
+// Alias a source de engine/adapters: los tests del facade corren sin build
+// previo (mismo patrón que insights/root).
+const engine = fileURLToPath(new URL("../engine/src/index.ts", import.meta.url));
+const adapters = fileURLToPath(new URL("../adapters/src/index.ts", import.meta.url));
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      "agent-usage-engine": engine,
+      "agent-usage-adapters": adapters,
+    },
+  },
   test: {
     coverage: {
       provider: "v8",

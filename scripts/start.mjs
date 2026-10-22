@@ -79,6 +79,8 @@ if (update) {
   console.log("• Instalando dependencias…");
   run("pnpm", ["install"]);
   for (const [script, message] of [
+    ["build:engine", "• Compilando engine…"],
+    ["build:adapters", "• Compilando adapters…"],
     ["build:core", "• Compilando core…"],
     ["build:insights", "• Compilando insights…"],
     ["build:web", "• Compilando la UI…"],
@@ -96,7 +98,7 @@ if (!existsSync(join(root, "web", "dist", "index.html"))) {
   console.log("• Compilando la UI (una sola vez)…");
   run("pnpm", ["run", "build:web"]);
 }
-for (const pkg of ["core", "insights"]) {
+for (const pkg of ["engine", "adapters", "core", "insights"]) {
   if (!existsSync(join(root, "packages", pkg, "dist"))) {
     console.log(`• Compilando ${pkg}…`);
     run("pnpm", ["run", `build:${pkg}`]);

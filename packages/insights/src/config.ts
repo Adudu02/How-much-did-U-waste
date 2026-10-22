@@ -1,12 +1,11 @@
 /**
  * Config del usuario (./data/config.json): tarifa/hora, min ahorrados por uso,
- * umbral de obsolescencia, rutas de agentes (PLAN §4.5). loadConfig hace merge
- * sobre defaults; nunca lanza si falta el archivo.
+ * umbral de obsolescencia, rutas de agentes (PLAN §4.5). La maquinaria
+ * (load/merge/save atómico) vive en el config store genérico del motor; aquí
+ * solo el SCHEMA DFT: defaults + validación + semántica de merge.
  */
-import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readFileRO } from "how-much-did-u-waste-core";
-import { dataDir } from "how-much-did-u-waste-core";
+import { createConfigStore, dataDir } from "how-much-did-u-waste-core";
 import { DEFAULT_WASTE, type WasteThresholds } from "./waste.js";
 
 export interface SkillMeta {
@@ -146,44 +145,50 @@ function defaultConfigPath(): string {
   return join(dataDir(), "config.json");
 }
 
-function merge(partial: Partial<Config>): Config {
+/**
+ * Merge de un parcial sobre una config base COMPLETA (defaults o la actual).
+ * `p` replica el compose que hacía saveConfig (top-level + maps anidados) y el
+ * resultado final se resuelve sobre DEFAULT_CONFIG/DEFAULT_WASTE, preservando
+ * la semántica histórica: PUT de `waste`/`pricing` reemplaza el objeto, los
+ * maps (minutesPerUse/agentPaths/skillMeta/quota.providers) se fusionan.
+ */
+function mergeConfig(base: Config, partial: Partial<Config>): Config {
+  const p = {
+    ...base,
+    ...partial,
+    minutesPerUse: { ...base.minutesPerUse, ...(partial.minutesPerUse ?? {}) },
+    agentPaths: { ...base.agentPaths, ...(partial.agentPaths ?? {}) },
+    skillMeta: { ...base.skillMeta, ...(partial.skillMeta ?? {}) },
+  };
   return {
     ...DEFAULT_CONFIG,
-    ...partial,
-    minutesPerUse: { ...DEFAULT_CONFIG.minutesPerUse, ...(partial.minutesPerUse ?? {}) },
-    agentPaths: { ...DEFAULT_CONFIG.agentPaths, ...(partial.agentPaths ?? {}) },
+    ...p,
+    minutesPerUse: { ...DEFAULT_CONFIG.minutesPerUse, ...p.minutesPerUse },
+    agentPaths: { ...DEFAULT_CONFIG.agentPaths, ...p.agentPaths },
     skillMeta: Object.fromEntries(
-      Object.entries({ ...DEFAULT_CONFIG.skillMeta, ...(partial.skillMeta ?? {}) }).filter(([, v]) => Object.keys(v).length > 0),
+      Object.entries({ ...DEFAULT_CONFIG.skillMeta, ...p.skillMeta }).filter(([, v]) => Object.keys(v).length > 0),
     ),
-    waste: { ...DEFAULT_WASTE, ...(partial.waste ?? {}) },
-    pricing: { ...DEFAULT_CONFIG.pricing, ...(partial.pricing ?? {}) },
+    waste: { ...DEFAULT_WASTE, ...(p.waste ?? {}) },
+    pricing: { ...DEFAULT_CONFIG.pricing, ...(p.pricing ?? {}) },
     quota: {
       ...DEFAULT_CONFIG.quota,
-      ...(partial.quota ?? {}),
-      providers: { ...DEFAULT_CONFIG.quota.providers, ...(partial.quota?.providers ?? {}) },
+      ...(p.quota ?? {}),
+      providers: { ...DEFAULT_CONFIG.quota.providers, ...(p.quota?.providers ?? {}) },
     },
   };
 }
 
+const store = createConfigStore({
+  defaults: DEFAULT_CONFIG,
+  validate: validateConfig,
+  merge: mergeConfig,
+});
+
 export async function loadConfig(path = defaultConfigPath()): Promise<Config> {
-  try {
-    return merge(validateConfig(JSON.parse(await readFileRO(path))));
-  } catch {
-    return { ...DEFAULT_CONFIG }; // sin archivo => defaults
-  }
+  return store.load(path);
 }
 
-/** Merge del parcial sobre lo existente (o defaults) y persiste. */
+/** Merge del parcial sobre lo existente (o defaults) y persiste (atómico). */
 export async function saveConfig(partial: Partial<Config>, path = defaultConfigPath()): Promise<Config> {
-  const valid = validateConfig(partial);
-  const current = await loadConfig(path);
-  const next = merge({
-    ...current,
-    ...valid,
-    minutesPerUse: { ...current.minutesPerUse, ...(valid.minutesPerUse ?? {}) },
-    agentPaths: { ...current.agentPaths, ...(valid.agentPaths ?? {}) },
-    skillMeta: { ...current.skillMeta, ...(valid.skillMeta ?? {}) },
-  });
-  await writeFile(path, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-  return next;
+  return store.save(partial, path);
 }

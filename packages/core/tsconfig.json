@@ -6,7 +6,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "paths": {}
   },
   "include": ["src"]
 }

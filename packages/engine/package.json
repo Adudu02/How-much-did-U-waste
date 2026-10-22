@@ -1,0 +1,55 @@
+{
+  "name": "agent-usage-engine",
+  "version": "0.0.7-beta",
+  "type": "module",
+  "description": "Generic usage/cost measurement engine for AI agents: incremental ingest pipeline, metrics DB (SQLite), pricing engine and derived views. Zero agent knowledge — adapters are injected. No server, no UI.",
+  "license": "MIT",
+  "author": "Adudu02",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adudu02/How-much-did-U-waste.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/Adudu02/How-much-did-U-waste#readme",
+  "bugs": {
+    "url": "https://github.com/Adudu02/How-much-did-U-waste/issues"
+  },
+  "keywords": [
+    "llm",
+    "ai-agents",
+    "tokens",
+    "cost",
+    "usage",
+    "sqlite",
+    "analytics",
+    "engine"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "data/pricing.json",
+    "data/pricing-overrides.json.example"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "pnpm build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@vitest/coverage-v8": "^4.1.11"
+  }
+}

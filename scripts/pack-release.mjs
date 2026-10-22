@@ -15,12 +15,14 @@ import { join } from "node:path";
 
 const root = process.cwd();
 const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+const engine = JSON.parse(readFileSync(join(root, "packages/engine/package.json"), "utf8"));
+const adapters = JSON.parse(readFileSync(join(root, "packages/adapters/package.json"), "utf8"));
 const core = JSON.parse(readFileSync(join(root, "packages/core/package.json"), "utf8"));
 const insights = JSON.parse(readFileSync(join(root, "packages/insights/package.json"), "utf8"));
 const reporter = JSON.parse(readFileSync(join(root, "packages/reporter/package.json"), "utf8"));
 
-const BUNDLED = [core.name, insights.name];
-const NATIVE = { "better-sqlite3": core.dependencies["better-sqlite3"] };
+const BUNDLED = [engine.name, adapters.name, core.name, insights.name];
+const NATIVE = { "better-sqlite3": engine.dependencies["better-sqlite3"] };
 
 function die(cond, msg) {
   if (!cond) {
@@ -29,22 +31,37 @@ function die(cond, msg) {
   }
 }
 
-for (const dir of ["dist", "web/dist", "packages/core/dist", "packages/insights/dist", "packages/reporter/dist"]) {
+for (const dir of ["dist", "web/dist", "packages/engine/dist", "packages/adapters/dist", "packages/core/dist", "packages/insights/dist", "packages/reporter/dist"]) {
   die(existsSync(join(root, dir)), `falta ${dir} — corré "pnpm build" primero`);
 }
 
 function stageWorkspacePackage(stageDir) {
-  // core: package.json tal cual (su dep better-sqlite3 es metadata; la raíz la declara)
+  // engine: package.json tal cual (better-sqlite3 es metadata; la raíz la declara)
+  // + data/ con el pricing.json de fábrica.
+  const engineDir = join(stageDir, "node_modules", engine.name);
+  mkdirSync(engineDir, { recursive: true });
+  writeFileSync(join(engineDir, "package.json"), JSON.stringify(engine, null, 2));
+  cpSync(join(root, "packages/engine/dist"), join(engineDir, "dist"), { recursive: true });
+  mkdirSync(join(engineDir, "data"), { recursive: true });
+  copyFileSync(join(root, "packages/engine/data/pricing.json"), join(engineDir, "data/pricing.json"));
+  copyFileSync(
+    join(root, "packages/engine/data/pricing-overrides.json.example"),
+    join(engineDir, "data/pricing-overrides.json.example"),
+  );
+  // adapters: sin la dep workspace a engine (se resuelve por node_modules hermano)
+  const adaptersDir = join(stageDir, "node_modules", adapters.name);
+  mkdirSync(adaptersDir, { recursive: true });
+  const adaptersJson = { ...adapters };
+  delete adaptersJson.dependencies;
+  writeFileSync(join(adaptersDir, "package.json"), JSON.stringify(adaptersJson, null, 2));
+  cpSync(join(root, "packages/adapters/dist"), join(adaptersDir, "dist"), { recursive: true });
+  // core (facade): sin deps workspace (engine/adapters son hermanos)
   const coreDir = join(stageDir, "node_modules", core.name);
   mkdirSync(coreDir, { recursive: true });
-  writeFileSync(join(coreDir, "package.json"), JSON.stringify(core, null, 2));
+  const coreJson = { ...core };
+  delete coreJson.dependencies;
+  writeFileSync(join(coreDir, "package.json"), JSON.stringify(coreJson, null, 2));
   cpSync(join(root, "packages/core/dist"), join(coreDir, "dist"), { recursive: true });
-  mkdirSync(join(coreDir, "data"), { recursive: true });
-  copyFileSync(join(root, "packages/core/data/pricing.json"), join(coreDir, "data/pricing.json"));
-  copyFileSync(
-    join(root, "packages/core/data/pricing-overrides.json.example"),
-    join(coreDir, "data/pricing-overrides.json.example"),
-  );
   // insights: sin la dep workspace a core (se resuelve por node_modules hermano)
   const insightsDir = join(stageDir, "node_modules", insights.name);
   mkdirSync(insightsDir, { recursive: true });

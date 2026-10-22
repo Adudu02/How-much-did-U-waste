@@ -35,7 +35,7 @@ jobs:
       - name: Tests
         run: pnpm test
 
-      - name: Build (core + insights + reporter + web + app)
+      - name: Build (engine + adapters + core + insights + reporter + web + app)
         run: pnpm run build
 
       - name: Pack release tarballs (registry-free install)
@@ -71,7 +71,7 @@ jobs:
           fi
           TAG_ARGS=""
           if [[ "${GITHUB_REF_NAME}" == *-* ]]; then TAG_ARGS="--tag beta"; fi
-          for pkg in how-much-did-u-waste-core how-much-did-u-waste-insights how-much-did-u-waste-report; do
+          for pkg in agent-usage-engine agent-usage-adapters how-much-did-u-waste-core how-much-did-u-waste-insights how-much-did-u-waste-report; do
             pnpm --filter "$pkg" publish --access public $TAG_ARGS --no-git-checks
           done
           pnpm publish --access public $TAG_ARGS --no-git-checks
