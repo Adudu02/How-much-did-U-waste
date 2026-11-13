@@ -1,4 +1,4 @@
-export type IconName = "home" | "activity" | "savings" | "skills" | "memory" | "settings" | "help";
+export type IconName = "home" | "activity" | "savings" | "skills" | "memory" | "settings" | "help" | "quota";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: (
@@ -38,6 +38,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="13" cy="10" r="1.7" fill="currentColor" stroke="none" />
       <line x1="3" y1="14" x2="17" y2="14" />
       <circle cx="6" cy="14" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  quota: (
+    <>
+      <path d="M4 15a6.5 6.5 0 1 1 12 0" />
+      <line x1="10" y1="15" x2="13.2" y2="9.6" />
+      <circle cx="10" cy="15" r="1.1" fill="currentColor" stroke="none" />
     </>
   ),
   help: (

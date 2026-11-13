@@ -13,6 +13,7 @@ import { useLocale, type MessageKey } from "./i18n.js";
 const PAGES: { path: string; label: MessageKey; icon: IconName; Component: React.LazyExoticComponent<() => React.JSX.Element> }[] = [
   { path: "/", label: "nav.home", icon: "home", Component: lazy(() => import("./pages/Inicio.js").then((m) => ({ default: m.Inicio }))) },
   { path: "/actividad", label: "nav.activity", icon: "activity", Component: lazy(() => import("./pages/Actividad.js").then((m) => ({ default: m.Actividad }))) },
+  { path: "/cuota", label: "nav.quota", icon: "quota", Component: lazy(() => import("./pages/Cuota.js").then((m) => ({ default: m.Cuota }))) },
   { path: "/ahorro", label: "nav.savings", icon: "savings", Component: lazy(() => import("./pages/Ahorro.js").then((m) => ({ default: m.Ahorro }))) },
   { path: "/skills", label: "nav.skills", icon: "skills", Component: lazy(() => import("./pages/Skills.js").then((m) => ({ default: m.Skills }))) },
   { path: "/memoria", label: "nav.memory", icon: "memory", Component: lazy(() => import("./pages/Memoria.js").then((m) => ({ default: m.Memoria }))) },

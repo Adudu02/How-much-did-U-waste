@@ -35,6 +35,16 @@ export async function refreshAll(): Promise<void> {
   bumpTick();
 }
 
+/** Solo refresca la cuota (los probers) y vuelve a pedir los paneles. */
+export async function refreshQuota(): Promise<void> {
+  try {
+    await fetch("/api/quota/refresh", { method: "POST" });
+  } catch {
+    // sin servidor: igual se vuelve a pedir la caché
+  }
+  bumpTick();
+}
+
 export function useApi<T>(path: string, _reloadKey = 0, reloadOnTick = true) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);

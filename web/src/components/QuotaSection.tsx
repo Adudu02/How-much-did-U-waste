@@ -8,23 +8,24 @@ import { useLocale } from "../i18n.js";
  * SIN agregación entre modelos ni ventanas. Umbrales: warn ≥70%, crítico ≥90%.
  * Estados: live | stale (con edad) | error | no-credential (instrucción).
  */
-interface QuotaSnapshot {
+export interface QuotaSnapshot {
   provider: string;
   model?: string;
   window: string;
   usedPercent?: number;
   resetsAt?: string;
   origin?: string;
+  plan?: string;
 }
 
-interface QuotaResponse {
+export interface QuotaResponse {
   status: string;
   ageMinutes: number | null;
   ttlMinutes: number;
   snapshots: QuotaSnapshot[];
 }
 
-const PROVIDER_LABEL: Record<string, string> = {
+export const PROVIDER_LABEL: Record<string, string> = {
   claude: "Claude",
   codex: "Codex",
   zai: "Z.ai GLM",
@@ -33,9 +34,9 @@ const PROVIDER_LABEL: Record<string, string> = {
   openrouter: "OpenRouter",
 };
 
-const PROVIDER_LOGO: Record<string, string> = { claude: "claude-code", codex: "codex" };
+export const PROVIDER_LOGO: Record<string, string> = { claude: "claude-code", codex: "codex" };
 
-function barColor(pct: number): string {
+export function barColor(pct: number): string {
   if (pct >= 90) return "bg-term-red";
   if (pct >= 70) return "bg-term-amber";
   return "bg-term-green";
